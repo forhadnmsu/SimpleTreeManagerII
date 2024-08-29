@@ -1,0 +1,5 @@
+*.root
+*.png
+build/
+inst/
+
