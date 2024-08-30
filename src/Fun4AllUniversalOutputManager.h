@@ -22,17 +22,19 @@ public:
 
     void SetTreeName(const std::string& name) { m_tree_name = name; }
     void SetFileName(const std::string& name) { m_file_name = name; }
+    void SetDimuonMode(bool enable) { m_dimuon_mode = enable; }
     virtual int Write(PHCompositeNode* startNode);
     TStopwatch timer;
 
 protected:
-    void OpenFile();
+    void OpenFile(PHCompositeNode* startNode);
     void CloseFile();
 
 private:
     std::string m_tree_name;
     std::string m_file_name;
     std::string m_dir_base;
+    bool m_dimuon_mode;
    
     TFile* m_file;
     TTree* m_tree;

@@ -12,7 +12,9 @@
 #include <interface_main/SQEvent.h>
 #include <interface_main/SQSpillMap.h>
 #include <interface_main/SQHitVector.h>
-#include <db_svc/DbSvc.h>
+#include <interface_main/SQDimuonVector.h>
+#include <ktracker/SRecEvent.h>
+
 #include "Fun4AllUniversalOutputManager.h"
 using namespace std;
 
@@ -24,7 +26,8 @@ Fun4AllUniversalOutputManager::Fun4AllUniversalOutputManager(const std::string &
     m_file_name("output.root"),
     m_evt(0),
     m_sp_map(0),
-    m_hit_vec(0)
+    m_hit_vec(0),
+    m_dimuon_mode(false) 
 {
  ;
 }
@@ -33,7 +36,7 @@ Fun4AllUniversalOutputManager::~Fun4AllUniversalOutputManager() {
     CloseFile();
 }
 
-void Fun4AllUniversalOutputManager::OpenFile() {
+void Fun4AllUniversalOutputManager::OpenFile(PHCompositeNode* startNode) {
 std::cout << "Fun4AllUniversalOutputManager::OpenFile(): Attempting to open file: " << m_file_name << " with tree: " << m_tree_name << std::endl;
 m_file = new TFile(m_file_name.c_str(), "RECREATE");
 
@@ -48,6 +51,7 @@ timer.Start();
 m_file->SetCompressionAlgorithm(ROOT::kLZMA);
 m_file->SetCompressionLevel(1);
 m_tree = new TTree(m_tree_name.c_str(), "Tree for storing events");
+m_tree->SetAutoFlush(4000);
 if (!m_tree) {
     std::cerr << "Error: Could not create tree " << m_tree_name << std::endl;
     exit(1);
@@ -66,24 +70,37 @@ if (!m_tree) {
     m_tree->Branch("elementID", &elementID);
     m_tree->Branch("tdcTime", &tdcTime);
     m_tree->Branch("driftDistance", &driftDistance);
+}
     m_tree->SetBasketSize("*", 64000);  // 64 KB
+
+
+
+if (m_dimuon_mode) {
+    m_evt = findNode::getClass<SQEvent>(startNode, "SQEvent");
+    m_hit_vec = findNode::getClass<SQHitVector>(startNode, "SQHitVector");
+    SRecEvent* mi_srec = findNode::getClass<SRecEvent>(startNode, "SRecEvent");
+
+    if (!mi_srec || !m_evt) {
+        cout << "Either SRecEvent or SQEvent node cannot be found. Aborting analysis." << endl;
+    }
+} else {
+    m_evt = findNode::getClass<SQEvent>(startNode, "SQEvent");
+    m_hit_vec = findNode::getClass<SQHitVector>(startNode, "SQHitVector");
+
+    if (!m_evt) {
+        cout << PHWHERE << "Cannot find the SQ data nodes. Abort." << endl;
+        exit(1); // Exit if critical nodes are not found
+    }
+}
+
+
+
 
 }
 int Fun4AllUniversalOutputManager::Write(PHCompositeNode* startNode) {
     if (!m_file || !m_tree) {
-        OpenFile();
+        OpenFile(startNode);
     }
-
-    if (!m_evt) {
-        m_evt = findNode::getClass<SQEvent>(startNode, "SQEvent");
-        m_hit_vec = findNode::getClass<SQHitVector>(startNode, "SQHitVector");
-
-        if (!m_evt) {
-            cout << PHWHERE << "Cannot find the SQ data nodes. Abort." << endl;
-            exit(1);
-        }
-    }
-
     RunID = m_evt->get_run_id();
     SpillID = m_evt->get_spill_id();
     RFID = m_evt->get_qie_rf_id();
