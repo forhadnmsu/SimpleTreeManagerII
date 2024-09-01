@@ -70,7 +70,6 @@ if (!m_tree) {
     m_tree->Branch("elementID", &elementID);
     m_tree->Branch("tdcTime", &tdcTime);
     m_tree->Branch("driftDistance", &driftDistance);
-}
     m_tree->SetBasketSize("*", 64000);  // 64 KB
 
 
